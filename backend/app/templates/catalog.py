@@ -20,7 +20,7 @@ TEMPLATES = [
     ),
     WorkflowTemplate(
         id="support-triage",
-        name="Support Triage",
+        name="Telegram Support Triage",
         description="Telegram-ready support workflow with triage, specialist response, and escalation.",
     ),
 ]
