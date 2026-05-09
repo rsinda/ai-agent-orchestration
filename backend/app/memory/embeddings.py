@@ -60,3 +60,7 @@ def cosine_similarity(left: list[float], right: list[float]) -> float:
     if left_norm == 0 or right_norm == 0:
         return 0
     return float(np.dot(left_vector, right_vector) / (left_norm * right_norm))
+
+
+# initilaize embeding download.
+embedding = get_embedding_service()
