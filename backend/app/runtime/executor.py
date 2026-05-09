@@ -110,7 +110,9 @@ class RuntimeExecutor:
         )
         context = state.get("messages", [])[-8:]
         user_prompt = self._agent_prompt(agent, state, context)
-        tool_context = await self._agent_tool_context(agent, node, state, context)
+        tool_context, agent_tool_results = await self._agent_tool_context(
+            agent, node, state, context
+        )
         memories = self.memory.recall(
             user_prompt or agent.role,
             filters={
@@ -189,6 +191,10 @@ class RuntimeExecutor:
         new_state: RuntimeState = {
             **state,
             "messages": next_messages,
+            "tool_results": [
+                *state.get("tool_results", []),
+                *agent_tool_results,
+            ],
             "variables": variables,
         }
         await self._record_event(
@@ -271,15 +277,16 @@ class RuntimeExecutor:
         node: dict[str, Any],
         state: RuntimeState,
         context: list[dict[str, Any]],
-    ) -> str:
+    ) -> tuple[str, list[dict[str, Any]]]:
         enabled_tools = set(agent.tools or [])
         enabled_tools.update(node.get("tools") or [])
         enabled_tools.discard("memory")
         if not enabled_tools:
-            return ""
+            return "", []
 
         prompt_text = state.get("input", "")
         context_lines: list[str] = []
+        tool_results: list[dict[str, Any]] = []
         for tool_name in sorted(enabled_tools):
             arguments = self._default_tool_arguments(tool_name, state, context)
             if arguments is None:
@@ -293,6 +300,17 @@ class RuntimeExecutor:
             try:
                 result = await self.tools.execute(tool_name, arguments)
                 context_lines.append(f"{tool_name}: {result.content}")
+                tool_results.append(
+                    {
+                        "tool_name": tool_name,
+                        "content": result.content,
+                        "data": result.data,
+                        "node_id": node["id"],
+                        "agent_id": agent.id,
+                        "arguments": arguments,
+                        "status": "succeeded",
+                    }
+                )
                 await self._record_event(
                     state["run_id"],
                     "agent_tool_call_finished",
@@ -305,6 +323,17 @@ class RuntimeExecutor:
                 )
             except Exception as exc:
                 context_lines.append(f"{tool_name}: failed with {exc}")
+                tool_results.append(
+                    {
+                        "tool_name": tool_name,
+                        "content": f"{tool_name}: failed with {exc}",
+                        "node_id": node["id"],
+                        "agent_id": agent.id,
+                        "arguments": arguments,
+                        "status": "failed",
+                        "error": str(exc),
+                    }
+                )
                 await self._record_event(
                     state["run_id"],
                     "agent_tool_call_failed",
@@ -316,7 +345,7 @@ class RuntimeExecutor:
                         "prompt": prompt_text[:300],
                     },
                 )
-        return "\n".join(context_lines)
+        return "\n".join(context_lines), tool_results
 
     def _agent_prompt(
         self, agent: Agent, state: RuntimeState, context: list[dict[str, Any]]

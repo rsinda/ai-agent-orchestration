@@ -4,7 +4,9 @@ def test_tool_api_lists_and_executes_calculator(client):
     names = {tool["name"] for tool in listed.json()}
     assert {"calculator", "web_search", "current_time", "text_stats"}.issubset(names)
 
-    executed = client.post("/tools/calculator/execute", json={"arguments": {"expression": "(2 + 3) * 4"}})
+    executed = client.post(
+        "/tools/calculator/execute", json={"arguments": {"expression": "(2 + 3) * 4"}}
+    )
     assert executed.status_code == 200
     body = executed.json()
     assert body["name"] == "calculator"
@@ -28,7 +30,9 @@ def test_workflow_tool_node_executes_and_persists_message(client):
                         "input": {"expression": "12 / 3 + 5"},
                     }
                 ],
-                "edges": [{"source": "calculate", "target": "END", "condition": "always"}],
+                "edges": [
+                    {"source": "calculate", "target": "END", "condition": "always"}
+                ],
             },
         },
     )
@@ -75,7 +79,9 @@ def test_agent_can_use_calculator_tool_context(client):
             "description": "",
             "definition": {
                 "start_node": "math",
-                "nodes": [{"id": "math", "type": "agent", "agent_id": agent.json()["id"]}],
+                "nodes": [
+                    {"id": "math", "type": "agent", "agent_id": agent.json()["id"]}
+                ],
                 "edges": [{"source": "math", "target": "END", "condition": "always"}],
             },
         },
@@ -87,9 +93,12 @@ def test_agent_can_use_calculator_tool_context(client):
         json={"input": "Calculate 2 + 3 * 4", "execute_async": False},
     )
     assert run.status_code == 201
+    tool_results = run.json()["state"]["tool_results"]
+    assert tool_results[0]["tool_name"] == "calculator"
+    assert tool_results[0]["status"] == "succeeded"
+    assert tool_results[0]["data"]["result"] == 14
 
     events = client.get(f"/runs/{run.json()['id']}/events")
     event_types = {event["event_type"] for event in events.json()}
     assert "agent_tool_call_started" in event_types
     assert "agent_tool_call_finished" in event_types
-
