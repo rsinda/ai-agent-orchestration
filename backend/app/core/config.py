@@ -12,7 +12,8 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.openai.com/v1"
     default_model: str = "gemini-1.5-flash"
     telegram_bot_token: str = ""
-    embedding_dimensions: int = 64
+    embedding_dimensions: int = 384
+    embedding_model_name: str = "BAAI/bge-small-en-v1.5"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
