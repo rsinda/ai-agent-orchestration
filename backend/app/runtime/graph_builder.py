@@ -81,7 +81,7 @@ class GraphBuilder:
             fallback = outgoing[-1]
             for edge in outgoing:
                 condition = edge.get("condition", "always")
-                if condition == "else":
+                if str(condition).lower() == "else":
                     fallback = edge
                     continue
                 if self._condition_matches(condition, state):
@@ -90,24 +90,49 @@ class GraphBuilder:
 
         return route
 
-    def _condition_matches(self, condition: str, state: RuntimeState) -> bool:
+    def _condition_matches(self, condition: str | None, state: RuntimeState) -> bool:
         variables = state.get("variables", {})
-        if condition in ("always", "", None):
+        raw_condition = "" if condition is None else str(condition).strip()
+        normalized_condition = raw_condition.lower()
+        if normalized_condition in ("always", ""):
             return True
-        if condition == "critic_needs_revision":
+        if normalized_condition == "critic_needs_revision":
             return (
                 bool(variables.get("needs_revision"))
                 and int(state.get("iteration", 0)) < 2
             )
-        if condition == "critic_approved":
+        if normalized_condition == "critic_approved":
             return not bool(variables.get("needs_revision"))
-        return bool(variables.get(condition))
+
+        last_output = self._last_message_content(state)
+        comparable_output = self._comparable_text(last_output)
+        if normalized_condition.startswith("output_equals:"):
+            expected = raw_condition.split(":", 1)[1]
+            return comparable_output == self._comparable_text(expected)
+        if normalized_condition.startswith("output_contains:"):
+            expected = raw_condition.split(":", 1)[1]
+            return self._comparable_text(expected) in comparable_output
+        if raw_condition and comparable_output == self._comparable_text(raw_condition):
+            return True
+
+        return bool(variables.get(raw_condition)) or bool(
+            variables.get(normalized_condition)
+        )
 
     def _is_unconditional(self, edge: dict[str, Any]) -> bool:
-        return edge.get("condition") in (None, "", "always")
+        return str(edge.get("condition") or "").lower() in ("", "always")
 
     def _route_key(self, edge: dict[str, Any]) -> str:
         return f"{edge['source']}->{edge.get('target', 'END')}:{edge.get('condition', 'always')}"
 
     def _target(self, edge: dict[str, Any]):
         return END if edge.get("target") == "END" else edge["target"]
+
+    def _last_message_content(self, state: RuntimeState) -> str:
+        messages = state.get("messages", [])
+        if not messages:
+            return ""
+        return str(messages[-1].get("content") or "")
+
+    def _comparable_text(self, value: str) -> str:
+        return value.strip().strip("\"'`.,:;").lower()

@@ -75,7 +75,87 @@ Supported built-in edge conditions:
 - `else`
 - `critic_needs_revision`
 - `critic_approved`
+- `output_equals:<text>`
+- `output_contains:<text>`
+- exact previous-agent output, for example `MATH`
 - any variable name stored in runtime state
+
+## Workflow Edges And Routing
+
+Each workflow edge describes where LangGraph should route after a node finishes.
+
+```json
+{
+  "source": "1-triage-agent",
+  "target": "2-math-agent",
+  "condition": "output_equals:MATH",
+  "label": "math"
+}
+```
+
+Edge fields:
+
+- `source`: node id that just finished.
+- `target`: next node id, or `END` to finish the run.
+- `condition`: routing rule evaluated against runtime state.
+- `label`: optional display label for UI graph rendering.
+
+Condition behavior:
+
+- `always`: route unconditionally.
+- `else`: fallback route when no earlier condition from the same source matched.
+- `critic_needs_revision`: route when critic output marked `needs_revision` and retry limit has not been reached.
+- `critic_approved`: route when critic output did not mark `needs_revision`.
+- `output_equals:MATH`: route when the previous agent/tool output message equals `MATH`, case-insensitive.
+- `output_contains:MATH`: route when the previous agent/tool output message contains `MATH`, case-insensitive.
+
+When a node has multiple outgoing edges, order matters. The router evaluates non-`else` edges in the JSON order and picks the first match. Keep `else` as the fallback edge for that source node.
+
+Example triage-to-math workflow:
+
+```json
+{
+  "start_node": "1-triage-agent",
+  "nodes": [
+    {
+      "id": "1-triage-agent",
+      "type": "agent",
+      "label": "Triage Agent",
+      "agent_id": "triage-agent-id",
+      "recipient_id": "workflow"
+    },
+    {
+      "id": "2-math-agent",
+      "type": "agent",
+      "label": "Math Agent",
+      "agent_id": "math-agent-id",
+      "recipient_id": "workflow"
+    }
+  ],
+  "edges": [
+    {
+      "source": "1-triage-agent",
+      "target": "2-math-agent",
+      "condition": "output_equals:MATH",
+      "label": "math"
+    },
+    {
+      "source": "1-triage-agent",
+      "target": "END",
+      "condition": "else",
+      "label": "not math"
+    },
+    {
+      "source": "2-math-agent",
+      "target": "END",
+      "condition": "always",
+      "label": "finish"
+    }
+  ]
+}
+```
+
+For this pattern, make the triage agent return exactly `MATH` for math requests. If the model may respond with a sentence like `This is a MATH request`, use `output_contains:MATH` instead.
 
 ## Adding Workflow Templates
 
