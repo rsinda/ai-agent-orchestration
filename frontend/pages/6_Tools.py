@@ -30,11 +30,13 @@ with right:
     st.subheader("Execute")
     default_arguments = {
         "calculator": {"expression": "(2 + 3) * 4"},
-        "web_search": {"query": "latest open source vector databases", "max_results": 5},
+        "web_search": {"query": "vectordb", "max_results": 5},
         "current_time": {"timezone": "Asia/Kolkata"},
         "text_stats": {"text": "Agent workflows need observable tools."},
     }.get(selected["name"], {})
-    raw_arguments = st.text_area("Arguments JSON", json.dumps(default_arguments, indent=2), height=180)
+    raw_arguments = st.text_area(
+        "Arguments JSON", json.dumps(default_arguments, indent=2), height=180
+    )
     if st.button("Run Tool", type="primary"):
         try:
             arguments = json.loads(raw_arguments or "{}")

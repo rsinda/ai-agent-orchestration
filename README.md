@@ -2,6 +2,10 @@
 
 Python implemnetation for the Yuno AI Engineer challenge. This service lets users create agents, instantiate multi-agent workflow templates, execute LangGraph workflows, persist message history, use memory, and trigger a workflow from Telegram.
 
+## DEMO VIDEO:
+
+https://drive.google.com/file/d/1FHWViUcBgc0DCSKWAlAgs3YI_Q2dSPDl/view?usp=sharing
+
 ## Quick Start
 
 Run the full app with one command:
