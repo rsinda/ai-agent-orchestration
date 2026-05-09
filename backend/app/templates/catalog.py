@@ -102,7 +102,7 @@ def _research_writer(db: Session, name: str | None) -> Workflow:
             "or contested, say so explicitly."
         ),
     )
-
+    researcher.tools = ["memory", "web_search", "current_time"]
     critic = _create_agent(
         db,
         name="Critic Agent",
@@ -158,7 +158,7 @@ def _research_writer(db: Session, name: str | None) -> Workflow:
             "Your output is the final response delivered directly to the user. Make it excellent."
         ),
     )
-
+    writer.tools = ["memory", "calculator", "text_stats"]
     workflow = Workflow(
         name=name or "Research + Writer",
         description=(
