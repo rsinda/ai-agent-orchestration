@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
-    default_model: str = "gemini-1.5-flash"
+    default_model: str = "gemini-2.5-flash"
     telegram_bot_token: str = ""
     embedding_dimensions: int = 384
     embedding_model_name: str = "BAAI/bge-small-en-v1.5"
